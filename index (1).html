@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDRS Handwritten Digit Recognition System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        #preview {
+            max-width: 280px;
+            max-height: 280px;
+            border: 2px solid #dfe6e9;
+            margin: 20px auto;
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        #result {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 25px 0;
+            color: #2c3e50;
+            min-height: 40px;
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            padding: 30px;
+            width: 300px;
+            cursor: pointer;
+            margin: 0 auto;
+            border-radius: 10px;
+            transition: all 0.3s;
+            background-color: #f8fafc;
+        }
+        .upload-area:hover {
+            background-color: #f0f7ff;
+            border-color: #2980b9;
+        }
+        button {
+            padding: 14px 28px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: all 0.3s;
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .confidence {
+            width: 100%;
+            max-width: 300px;
+            margin: 25px auto;
+        }
+        .confidence-bar-container {
+            height: 24px;
+            background-color: #ecf0f1;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .confidence-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #27ae60);
+            width: 0%;
+            transition: width 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        .examples-title {
+            width: 100%;
+            margin-bottom: 10px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .example-img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+            border: 1px solid #dfe6e9;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 6px;
+            padding: 4px;
+            background-color: white;
+        }
+        .example-img:hover {
+            transform: scale(1.1);
+            border-color: #3498db;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        .probability-chart {
+            width: 100%;
+            max-width: 650px;
+            margin: 40px auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: opacity 0.5s ease;
+        }
+        .chart-container {
+            display: flex;
+            height: 220px;
+            align-items: flex-end;
+            justify-content: space-around;
+            margin-top: 25px;
+            padding-bottom: 15px;
+            position: relative;
+        }
+        .chart-bar {
+            width: 36px;
+            background: linear-gradient(to top, #3498db, #2980b9);
+            position: relative;
+            transition: height 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+            border-radius: 5px 5px 0 0;
+            margin: 0 2px;
+        }
+        .chart-bar.highest {
+            background: linear-gradient(to top, #2ecc71, #27ae60);
+        }
+        .chart-label {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 13px;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        .chart-value {
+            position: absolute;
+            top: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: 600;
+            background-color: rgba(255,255,255,0.9);
+            padding: 2px 6px;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .chart-axis {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background-color: #dfe6e9;
+        }
+        .hidden {
+            display: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Digit Classifier</h1>
+        <p class="subtitle">Upload an image of a handwritten digit (0-9)</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>Drag & drop an image here or click to select</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <img id="preview" style="display: none;">
+        
+        <button id="predictBtn" disabled>
+            <span class="loading" style="display: none;"></span>
+            Predict Digit
+        </button>
+        
+        <div id="result"></div>
+        
+        <div class="confidence">
+            <p>Confidence Level:</p>
+            <div class="confidence-bar-container">
+                <div class="confidence-bar" id="confidenceBar"></div>
+            </div>
+            <span id="confidenceValue">0%</span>
+        </div>
+
+        <div class="examples">
+            <div class="examples-title">Try these examples:</div>
+            <img src="images/1.png.png" class="example-img" onclick="loadExample('1.png.png')">
+            <img src="images/2.png.png" class="example-img" onclick="loadExample('2.png.png')">
+            <img src="images/3.png.png" class="example-img" onclick="loadExample('3.png.png')">
+            <img src="images/4.png.png" class="example-img" onclick="loadExample('4.png.png')">
+            <img src="images/5.png.png" class="example-img" onclick="loadExample('5.png.png')">
+            <img src="images/6.png.png" class="example-img" onclick="loadExample('6.png.png')">
+            <img src="images/7.png.png" class="example-img" onclick="loadExample('7.png.png')">
+            <img src="images/8.png.png" class="example-img" onclick="loadExample('8.png.png')">
+            <img src="images/9.png.png" class="example-img" onclick="loadExample('9.png.png')">
+        </div>
+
+        <div class="probability-chart hidden" id="probabilityChart">
+            <div class="chart-title">Prediction Probability Distribution</div>
+            <div class="chart-container" id="chartContainer">
+                <div class="chart-axis"></div>
+                <!-- Bars will be added dynamically by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const preview = document.getElementById('preview');
+        const predictBtn = document.getElementById('predictBtn');
+        const loadingSpinner = predictBtn.querySelector('.loading');
+        const resultDiv = document.getElementById('result');
+        const confidenceBar = document.getElementById('confidenceBar');
+        const confidenceValue = document.getElementById('confidenceValue');
+        const probabilityChart = document.getElementById('probabilityChart');
+
+        // Handle drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#2ecc71';
+            uploadArea.style.backgroundColor = '#eaf7ee';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#3498db';
+            uploadArea.style.backgroundColor = '#f8fafc';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3498db';
+            uploadArea.style.backgroundColor = '#f8fafc';
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        // Handle click to select file
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file && file.type.match('image.*')) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    predictBtn.disabled = false;
+                    resultDiv.textContent = '';
+                    confidenceBar.style.width = '0%';
+                    confidenceValue.textContent = '0%';
+                    probabilityChart.classList.add('hidden');
+                }
+                
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Load example image
+        function loadExample(filename) {
+            preview.src = 'images/' + filename;
+            preview.style.display = 'block';
+            predictBtn.disabled = false;
+            resultDiv.textContent = '';
+            confidenceBar.style.width = '0%';
+            confidenceValue.textContent = '0%';
+            probabilityChart.classList.add('hidden');
+            
+            // Create a fake file object for the example
+            fetch('images/' + filename)
+                .then(res => res.blob())
+                .then(blob => {
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                });
+        }
+
+        // Handle prediction
+        predictBtn.addEventListener('click', async () => {
+            if (!fileInput.files.length) return;
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                predictBtn.disabled = true;
+                loadingSpinner.style.display = 'inline-block';
+                predictBtn.textContent = ' Predicting...';
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Prediction failed - please try another image');
+                }
+                
+                const data = await response.json();
+                
+                // Display main prediction
+                resultDiv.textContent = `Predicted Digit: ${data.prediction}`;
+                resultDiv.style.color = '#2c3e50';
+                
+                // Update confidence meter
+                const confidencePercent = data.confidence * 100;
+                confidenceBar.style.width = `${confidencePercent}%`;
+                confidenceValue.textContent = `${confidencePercent.toFixed(1)}%`;
+                
+                // Show and update the probability chart
+                updateProbabilityChart(data.probabilities, data.prediction);
+                
+            } catch (error) {
+                resultDiv.textContent = error.message;
+                resultDiv.style.color = '#e74c3c';
+            } finally {
+                predictBtn.disabled = false;
+                loadingSpinner.style.display = 'none';
+                predictBtn.textContent = 'Predict Digit';
+            }
+        });
+        
+        // Update probability chart
+        function updateProbabilityChart(probabilities, predictedDigit) {
+            const chartContainer = document.getElementById('chartContainer');
+            
+            // Clear previous bars (keep the axis)
+            const axis = chartContainer.querySelector('.chart-axis');
+            chartContainer.innerHTML = '';
+            chartContainer.appendChild(axis);
+            
+            // Show the chart with fade-in effect
+            probabilityChart.classList.remove('hidden');
+            probabilityChart.style.opacity = 0;
+            setTimeout(() => { probabilityChart.style.opacity = 1; }, 10);
+            
+            // Create bars for each digit (0-9)
+            probabilities.forEach((prob, digit) => {
+                const barHeight = (prob * 100) + '%';
+                const isHighest = digit === predictedDigit;
+                
+                const bar = document.createElement('div');
+                bar.className = `chart-bar ${isHighest ? 'highest' : ''}`;
+                bar.style.height = '0%'; // Start at 0 for animation
+                
+                const label = document.createElement('div');
+                label.className = 'chart-label';
+                label.textContent = digit;
+                
+                const value = document.createElement('div');
+                value.className = 'chart-value';
+                value.textContent = `${(prob * 100).toFixed(1)}%`;
+                
+                bar.appendChild(value);
+                bar.appendChild(label);
+                chartContainer.appendChild(bar);
+                
+                // Animate the bar growth
+                setTimeout(() => {
+                    bar.style.height = barHeight;
+                }, 100 + digit * 50);
+            });
+        }
+    </script>
+</body>
+</html>
