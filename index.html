@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST Digit Classifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        #preview {
+            max-width: 280px;
+            max-height: 280px;
+            border: 1px solid #ddd;
+            margin: 20px auto;
+            display: block;
+        }
+        #result {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2c3e50;
+            min-height: 40px;
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            padding: 30px;
+            width: 300px;
+            cursor: pointer;
+            margin: 0 auto;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background-color: #f0f8ff;
+            border-color: #2980b9;
+        }
+        button {
+            padding: 12px 25px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 15px 0;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .confidence {
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        .confidence-bar-container {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .confidence-bar {
+            height: 100%;
+            background-color: #2ecc71;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .example-img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .example-img:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Digit Classifier</h1>
+        <p>Upload an image of a handwritten digit (0-9)</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>Drag & drop an image here or click to select</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <img id="preview" style="display: none;">
+        
+        <button id="predictBtn" disabled>Predict Digit</button>
+        
+        <div id="result"></div>
+        
+        <div class="confidence">
+            <p>Confidence:</p>
+            <div class="confidence-bar-container">
+                <div class="confidence-bar" id="confidenceBar"></div>
+            </div>
+            <span id="confidenceValue">0%</span>
+        </div>
+
+        <div class="examples">
+            <p>Try these examples:</p>
+            <img src="images/1.png.png" class="example-img" onclick="loadExample('1.png.png')">
+            <img src="images/2.png.png" class="example-img" onclick="loadExample('2.png.png')">
+            <img src="images/3.png.png" class="example-img" onclick="loadExample('3.png.png')">
+            <img src="images/4.png.png" class="example-img" onclick="loadExample('4.png.png')">
+            <img src="images/5.png.png" class="example-img" onclick="loadExample('5.png.png')">
+            <img src="images/6.png.png" class="example-img" onclick="loadExample('6.png.png')">
+            <img src="images/7.png.png" class="example-img" onclick="loadExample('7.png.png')">
+            <img src="images/8.png.png" class="example-img" onclick="loadExample('8.png.png')">
+            <img src="images/9.png.png" class="example-img" onclick="loadExample('9.png.png')">
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const preview = document.getElementById('preview');
+        const predictBtn = document.getElementById('predictBtn');
+        const resultDiv = document.getElementById('result');
+        const confidenceBar = document.getElementById('confidenceBar');
+        const confidenceValue = document.getElementById('confidenceValue');
+
+        // Handle drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#2ecc71';
+            uploadArea.style.backgroundColor = '#eaf7ee';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#3498db';
+            uploadArea.style.backgroundColor = '';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#3498db';
+            uploadArea.style.backgroundColor = '';
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        // Handle click to select file
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file && file.type.match('image.*')) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    predictBtn.disabled = false;
+                    resultDiv.textContent = '';
+                    confidenceBar.style.width = '0%';
+                    confidenceValue.textContent = '0%';
+                }
+                
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Load example image
+        function loadExample(filename) {
+            preview.src = 'images/' + filename;
+            preview.style.display = 'block';
+            predictBtn.disabled = false;
+            resultDiv.textContent = '';
+            confidenceBar.style.width = '0%';
+            confidenceValue.textContent = '0%';
+            
+            // Create a fake file object for the example
+            fetch('images/' + filename)
+                .then(res => res.blob())
+                .then(blob => {
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                });
+        }
+
+        // Handle prediction
+        predictBtn.addEventListener('click', async () => {
+            if (!fileInput.files.length) return;
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                predictBtn.disabled = true;
+                predictBtn.textContent = 'Predicting...';
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Prediction failed');
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.textContent = `Predicted Digit: ${data.prediction}`;
+                confidenceBar.style.width = `${data.confidence * 100}%`;
+                confidenceValue.textContent = `${(data.confidence * 100).toFixed(1)}%`;
+                
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+                resultDiv.style.color = '#e74c3c';
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.textContent = 'Predict Digit';
+            }
+        });
+    </script>
+</body>
+</html>
